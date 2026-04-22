@@ -1,7 +1,6 @@
 import os
-import anthropic
-import smtplib
 import json
+import smtplib
 import urllib.request
 import urllib.parse
 from email.mime.multipart import MIMEMultipart
@@ -9,13 +8,11 @@ from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 
 # ── 환경변수 ──────────────────────────────────────────────
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-GMAIL_USER        = os.environ["GMAIL_USER"]        # 발신 Gmail 주소
-GMAIL_APP_PW      = os.environ["GMAIL_APP_PW"]      # Gmail 앱 비밀번호
-TO_EMAIL          = os.environ["TO_EMAIL"]          # 수신 이메일
-YOUTUBE_API_KEY   = os.environ["YOUTUBE_API_KEY"]   # YouTube Data API v3 키
-
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+OPENAI_API_KEY  = os.environ["OPENAI_API_KEY"]
+GMAIL_USER      = os.environ["GMAIL_USER"]
+GMAIL_APP_PW    = os.environ["GMAIL_APP_PW"]
+TO_EMAIL        = os.environ["TO_EMAIL"]
+YOUTUBE_API_KEY = os.environ["YOUTUBE_API_KEY"]
 
 
 # ── 1. YouTube 트렌딩 F&B 영상 수집 ──────────────────────
@@ -112,12 +109,23 @@ def generate_report(youtube_raw: str, reddit_raw: str) -> str:
 (위에서 언급된 링크를 한곳에 정리)
 """
 
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
+    payload = json.dumps({
+        "model": "gpt-4o-mini",
+        "max_tokens": 2000,
+        "messages": [{"role": "user", "content": prompt}],
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.openai.com/v1/chat/completions",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+        },
     )
-    return message.content[0].text
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = json.loads(resp.read())
+    return data["choices"][0]["message"]["content"]
 
 
 # ── 4. 이메일 발송 ────────────────────────────────────────
