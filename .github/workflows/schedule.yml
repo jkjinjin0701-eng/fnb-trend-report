@@ -3,6 +3,9 @@ name: Weekly F&B Trend Report
 on:
   schedule:
     - cron: '0 0 * * 1'
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
